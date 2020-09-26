@@ -3,7 +3,9 @@ defmodule ChatApiWeb.NotificationChannel do
 
   alias ChatApiWeb.Presence
   alias Phoenix.Socket.Broadcast
-  alias ChatApi.{Messages, Conversations, EventSubscriptions}
+  alias ChatApi.{Messages, Conversations}
+
+  require Logger
 
   @impl true
   def join("notification:" <> account_id, %{"ids" => ids}, socket) do
@@ -80,53 +82,34 @@ defmodule ChatApiWeb.NotificationChannel do
 
   def handle_info(:after_join, socket) do
     with %{current_user: current_user} <- socket.assigns,
-         %{id: user_id} <- current_user do
+         %{id: user_id, account_id: account_id} <- current_user do
       key = "user:" <> inspect(user_id)
 
       {:ok, _} =
         Presence.track(socket, key, %{
-          online_at: inspect(System.system_time(:second))
+          online_at: inspect(System.system_time(:second)),
+          user_id: user_id
         })
 
       push(socket, "presence_state", Presence.list(socket))
+
+      # Add tracking to "account room" so we can check which agents are online
+      {:ok, _} =
+        Presence.track(self(), "room:" <> account_id, key, %{
+          online_at: inspect(System.system_time(:second)),
+          user_id: user_id
+        })
     end
 
     {:noreply, socket}
   end
 
-  defp send_message_alerts(message) do
-    %{conversation_id: conversation_id, customer_id: customer_id, body: body} = message
-    type = if is_nil(customer_id), do: :agent, else: :customer
-
-    # TODO: how should we handle errors here?
-    ChatApi.Slack.send_conversation_message_alert(conversation_id, body, type: type)
-  end
-
-  # TODO: DRY up with conversation channel
-  defp send_webhook_notifications(account_id, payload) do
-    EventSubscriptions.notify_event_subscriptions(account_id, %{
-      "event" => "message:created",
-      "payload" => payload
-    })
-  end
-
   defp broadcast_new_message(message) do
-    json = ChatApiWeb.MessageView.render("expanded.json", message: message)
-    %{conversation_id: conversation_id, account_id: account_id} = message
-    topic = "conversation:" <> conversation_id
-
-    # TODO: explain the difference between broadcast! and broadcast_from! and
-    # why we use one vs the other here
-    ChatApiWeb.Endpoint.broadcast!(topic, "shout", json)
-
-    # Handling async for now
-    Task.start(fn ->
-      send_message_alerts(message)
-    end)
-
-    Task.start(fn ->
-      send_webhook_notifications(account_id, json)
-    end)
+    message
+    |> Messages.broadcast_to_conversation!()
+    |> Messages.notify(:slack)
+    |> Messages.notify(:webhooks)
+    |> Messages.notify(:conversation_reply_email)
   end
 
   defp put_new_topics(socket, topics) do
@@ -137,6 +120,7 @@ defmodule ChatApiWeb.NotificationChannel do
         acc
       else
         :ok = ChatApiWeb.Endpoint.subscribe(topic)
+
         assign(acc, :topics, [topic | topics])
       end
     end)

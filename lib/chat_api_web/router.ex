@@ -10,12 +10,19 @@ defmodule ChatApiWeb.Router do
   end
 
   pipeline :api do
+    plug(ChatApiWeb.IPAddressPlug)
     plug(:accepts, ["json"])
     plug(ChatApiWeb.APIAuthPlug, otp_app: :chat_api)
   end
 
   pipeline :api_protected do
     plug(Pow.Plug.RequireAuthenticated, error_handler: ChatApiWeb.APIAuthErrorHandler)
+    plug(ChatApiWeb.EnsureUserEnabledPlug)
+  end
+
+  # Swagger
+  scope "/api/swagger" do
+    forward "/", PhoenixSwagger.Plug.SwaggerUI, otp_app: :chat_api, swagger_file: "swagger.json"
   end
 
   # Public routes
@@ -34,6 +41,9 @@ defmodule ChatApiWeb.Router do
     get("/customers/identify", CustomerController, :identify)
     get("/widget_settings", WidgetSettingsController, :show)
     put("/widget_settings/metadata", WidgetSettingsController, :update_metadata)
+    post("/verify_email", UserController, :verify_email)
+    post("/reset_password", UserController, :create_password_reset)
+    put("/reset_password", UserController, :reset_password)
 
     # TODO: figure out a better name?
     get("/conversations/customer", ConversationController, :find_by_customer)
@@ -48,14 +58,23 @@ defmodule ChatApiWeb.Router do
     get("/me", SessionController, :me)
     get("/accounts/me", AccountController, :me)
     get("/messages/count", MessageController, :count)
+    get("/billing", BillingController, :show)
+    post("/billing", BillingController, :create)
+    put("/billing", BillingController, :update)
 
     get("/slack/oauth", SlackController, :oauth)
     get("/slack/authorization", SlackController, :authorization)
-    put("/widget_settings", WidgetSettingsController, :create_or_update)
+    get("/gmail/auth", GmailController, :auth)
+    get("/gmail/oauth", GmailController, :callback)
+    get("/gmail/authorization", GmailController, :authorization)
+    post("/gmail/send", GmailController, :send)
+    put("/widget_settings", WidgetSettingsController, :update)
     get("/profile", UserProfileController, :show)
-    put("/profile", UserProfileController, :create_or_update)
+    put("/profile", UserProfileController, :update)
     get("/user_settings", UserSettingsController, :show)
-    put("/user_settings", UserSettingsController, :create_or_update)
+    put("/user_settings", UserSettingsController, :update)
+    post("/users/:id/disable", UserController, :disable)
+    post("/users/:id/enable", UserController, :enable)
     post("/payment_methods", PaymentMethodController, :create)
     get("/payment_methods", PaymentMethodController, :show)
 
@@ -88,6 +107,19 @@ defmodule ChatApiWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :index
+    # TODO: move somewhere else?
+    get "/gmail/auth", GmailController, :index
+
+    # Fallback to index, which renders React app
     get "/*path", PageController, :index
+  end
+
+  def swagger_info do
+    %{
+      info: %{
+        version: "1.0",
+        title: "Papercups API"
+      }
+    }
   end
 end

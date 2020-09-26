@@ -2,10 +2,11 @@ import React from 'react';
 import {RouteComponentProps} from 'react-router-dom';
 import {Box, Flex} from 'theme-ui';
 import qs from 'query-string';
-import {Button, Paragraph, Text, Title} from '../common';
+import {Alert, Button, Paragraph, Text, Title} from '../common';
 import {PlusOutlined} from '../icons';
 import Spinner from '../Spinner';
 import * as API from '../../api';
+import logger from '../../logger';
 import {IntegrationType, WebhookEventSubscription} from './support';
 import IntegrationsTable from './IntegrationsTable';
 import WebhooksTable from './WebhooksTable';
@@ -31,23 +32,28 @@ class IntegrationsOverview extends React.Component<Props, State> {
 
   async componentDidMount() {
     try {
-      const {match, location} = this.props;
+      const {match, location, history} = this.props;
       const {search} = location;
       const {type} = match.params;
 
       if (type) {
         await this.handleIntegrationType(type, search);
+
+        history.push('/integrations');
       }
 
       const integrations = await Promise.all([
         this.fetchSlackIntegration(),
         this.fetchGmailIntegration(),
+        this.fetchTwilioIntegration(),
+        this.fetchMicrosoftTeamsIntegration(),
+        this.fetchWhatsAppIntegration(),
       ]);
       const webhooks = await API.fetchEventSubscriptions();
 
       this.setState({integrations, webhooks, loading: false});
     } catch (err) {
-      console.log('Error loading integrations:', err);
+      logger.error('Error loading integrations:', err);
 
       this.setState({loading: false});
     }
@@ -66,24 +72,63 @@ class IntegrationsOverview extends React.Component<Props, State> {
   };
 
   fetchGmailIntegration = async (): Promise<IntegrationType> => {
+    const auth = await API.fetchGmailAuthorization();
+
     return {
       key: 'gmail',
-      integration: 'Gmail',
-      status: 'not_connected',
-      created_at: null,
+      integration: 'Gmail (beta)',
+      status: auth ? 'connected' : 'not_connected',
+      created_at: auth ? auth.created_at : null,
       icon: '/gmail.svg',
     };
   };
 
-  handleIntegrationType = (type: string, query: string = '') => {
+  fetchMicrosoftTeamsIntegration = async (): Promise<IntegrationType> => {
+    return {
+      key: 'microsoft-teams',
+      integration: 'Microsoft Teams',
+      status: 'not_connected',
+      created_at: null,
+      icon: '/microsoft-teams.svg',
+    };
+  };
+
+  fetchTwilioIntegration = async (): Promise<IntegrationType> => {
+    return {
+      key: 'twilio',
+      integration: 'Twilio',
+      status: 'not_connected',
+      created_at: null,
+      icon: '/twilio.svg',
+    };
+  };
+
+  fetchWhatsAppIntegration = async (): Promise<IntegrationType> => {
+    return {
+      key: 'whatsapp',
+      integration: 'WhatsApp',
+      status: 'not_connected',
+      created_at: null,
+      icon: '/whatsapp.svg',
+    };
+  };
+
+  handleIntegrationType = async (type: string, query: string = '') => {
     const q = qs.parse(query);
+    const code = q.code ? String(q.code) : null;
+
+    if (!code) {
+      return null;
+    }
 
     switch (type) {
       case 'slack':
-        const code = String(q.code);
-
         return API.authorizeSlackIntegration(code).catch((err) =>
-          console.log('Failed to authorize Slack:', err)
+          logger.error('Failed to authorize Slack:', err)
+        );
+      case 'gmail':
+        return API.authorizeGmailIntegration(code).catch((err) =>
+          logger.error('Failed to authorize Gmail:', err)
         );
       default:
         return null;
@@ -115,7 +160,7 @@ class IntegrationsOverview extends React.Component<Props, State> {
 
       this.setState({webhooks});
     } catch (err) {
-      console.log('Error refreshing event subscriptions:', err);
+      logger.error('Error refreshing event subscriptions:', err);
     }
   };
 
@@ -170,7 +215,18 @@ class IntegrationsOverview extends React.Component<Props, State> {
             </Text>
           </Paragraph>
 
-          <Box my={4}>
+          <Alert
+            message={
+              <Text>
+                At the moment, we only support connecting to{' '}
+                <Text strong>public</Text> Slack channels in your workspace
+              </Text>
+            }
+            type="warning"
+            showIcon
+          />
+
+          <Box mt={3} mb={4}>
             <IntegrationsTable integrations={integrations} />
           </Box>
         </Box>

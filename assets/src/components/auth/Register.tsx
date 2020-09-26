@@ -3,6 +3,7 @@ import {RouteComponentProps, Link} from 'react-router-dom';
 import {Box, Flex} from 'theme-ui';
 import {Button, Input, Text, Title} from '../common';
 import {useAuth} from './AuthProvider';
+import logger from '../../logger';
 
 type Props = RouteComponentProps<{invite?: string}> & {
   onSubmit: (params: any) => Promise<void>;
@@ -66,6 +67,8 @@ class Register extends React.Component<Props, State> {
       return 'Email is required';
     } else if (!password) {
       return 'Password is required';
+    } else if (password.length < 8) {
+      return 'Password must be at least 8 characters';
     } else if (password !== passwordConfirmation) {
       return 'Password confirmation does not match';
     } else {
@@ -111,7 +114,7 @@ class Register extends React.Component<Props, State> {
       })
       .then(() => this.props.history.push('/conversations'))
       .catch((err) => {
-        console.log('Error!', err);
+        logger.error('Error!', err);
         // TODO: provide more granular error messages?
         const error =
           err.response?.body?.error?.message || 'Invalid credentials';

@@ -27,6 +27,11 @@ export type RegisterParams = LoginParams & {
   passwordConfirmation: string;
 };
 
+export type ResetPasswordParams = {
+  password: string;
+  passwordConfirmation: string;
+};
+
 export type WidgetSettingsParams = {
   id?: string;
   title: string;
@@ -106,6 +111,34 @@ export const renew = async (token = getRefreshToken()) => {
     .then((res) => res.body.data);
 };
 
+export const verifyUserEmail = async (verificationToken: string) => {
+  return request
+    .post(`/api/verify_email`)
+    .send({token: verificationToken})
+    .then((res) => res.body.data);
+};
+
+export const sendPasswordResetEmail = async (email: string) => {
+  return request
+    .post(`/api/reset_password`)
+    .send({email})
+    .then((res) => res.body.data);
+};
+
+export const attemptPasswordReset = async (
+  passwordResetToken: string,
+  {password, passwordConfirmation}: ResetPasswordParams
+) => {
+  return request
+    .put(`/api/reset_password`)
+    .send({
+      password,
+      password_confirmation: passwordConfirmation,
+      token: passwordResetToken,
+    })
+    .then((res) => res.body.data);
+};
+
 export const createNewCustomer = async (accountId: string) => {
   return request
     .post(`/api/customers`)
@@ -116,6 +149,17 @@ export const createNewCustomer = async (accountId: string) => {
         last_seen: now(),
       },
     }) // TODO: send over some metadata?
+    .then((res) => res.body.data);
+};
+
+export const fetchCustomers = async (token = getAccessToken()) => {
+  if (!token) {
+    throw new Error('Invalid token!');
+  }
+
+  return request
+    .get(`/api/customers`)
+    .set('Authorization', token)
     .then((res) => res.body.data);
 };
 
@@ -345,6 +389,38 @@ export const fetchSlackAuthorization = async (token = getAccessToken()) => {
     .then((res) => res.body.data);
 };
 
+export const fetchGmailAuthorization = async (token = getAccessToken()) => {
+  if (!token) {
+    throw new Error('Invalid token!');
+  }
+
+  return request
+    .get(`/api/gmail/authorization`)
+    .set('Authorization', token)
+    .then((res) => res.body.data);
+};
+
+export type EmailParams = {
+  recipient: string;
+  subject: string;
+  message: string;
+};
+
+export const sendGmailNotification = async (
+  {recipient, subject, message}: EmailParams,
+  token = getAccessToken()
+) => {
+  if (!token) {
+    throw new Error('Invalid token!');
+  }
+
+  return request
+    .post(`/api/gmail/send`)
+    .send({recipient, subject, message})
+    .set('Authorization', token)
+    .then((res) => res.body.data);
+};
+
 export const fetchEventSubscriptions = async (token = getAccessToken()) => {
   if (!token) {
     throw new Error('Invalid token!');
@@ -434,6 +510,21 @@ export const authorizeSlackIntegration = async (
     .then((res) => res.body.data);
 };
 
+export const authorizeGmailIntegration = async (
+  code: string,
+  token = getAccessToken()
+) => {
+  if (!token) {
+    throw new Error('Invalid token!');
+  }
+
+  return request
+    .get(`/api/gmail/oauth`)
+    .query({code})
+    .set('Authorization', token)
+    .then((res) => res.body.data);
+};
+
 export const updateWidgetSettings = async (
   widgetSettingsParams: WidgetSettingsParams,
   token = getAccessToken()
@@ -460,6 +551,47 @@ export const fetchDefaultPaymentMethod = async (token = getAccessToken()) => {
     .then((res) => res.body.data);
 };
 
+export const fetchBillingInfo = async (token = getAccessToken()) => {
+  if (!token) {
+    throw new Error('Invalid token!');
+  }
+
+  return request
+    .get(`/api/billing`)
+    .set('Authorization', token)
+    .then((res) => res.body.data);
+};
+
+export const createSubscriptionPlan = async (
+  plan: string,
+  token = getAccessToken()
+) => {
+  if (!token) {
+    throw new Error('Invalid token!');
+  }
+
+  return request
+    .post(`/api/billing`)
+    .send({plan})
+    .set('Authorization', token)
+    .then((res) => res.body.data);
+};
+
+export const updateSubscriptionPlan = async (
+  plan: string,
+  token = getAccessToken()
+) => {
+  if (!token) {
+    throw new Error('Invalid token!');
+  }
+
+  return request
+    .put(`/api/billing`)
+    .send({plan})
+    .set('Authorization', token)
+    .then((res) => res.body.data);
+};
+
 export const createPaymentMethod = async (
   paymentMethod: any,
   token = getAccessToken()
@@ -471,6 +603,34 @@ export const createPaymentMethod = async (
   return request
     .post(`/api/payment_methods`)
     .send({payment_method: paymentMethod})
+    .set('Authorization', token)
+    .then((res) => res.body.data);
+};
+
+export const disableAccountUser = async (
+  userId: number | string,
+  token = getAccessToken()
+) => {
+  if (!token) {
+    throw new Error('Invalid token!');
+  }
+
+  return request
+    .post(`/api/users/${userId}/disable`)
+    .set('Authorization', token)
+    .then((res) => res.body.data);
+};
+
+export const enableAccountUser = async (
+  userId: number | string,
+  token = getAccessToken()
+) => {
+  if (!token) {
+    throw new Error('Invalid token!');
+  }
+
+  return request
+    .post(`/api/users/${userId}/enable`)
     .set('Authorization', token)
     .then((res) => res.body.data);
 };

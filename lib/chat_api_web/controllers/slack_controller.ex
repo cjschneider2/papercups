@@ -15,6 +15,7 @@ defmodule ChatApiWeb.SlackController do
   def oauth(conn, %{"code" => code}) do
     Logger.info("Code from Slack OAuth: #{inspect(code)}")
 
+    # TODO: improve error handling!
     {:ok, response} = Slack.get_access_token(code)
 
     Logger.info("Slack OAuth response: #{inspect(response)}")
@@ -91,8 +92,7 @@ defmodule ChatApiWeb.SlackController do
   end
 
   def webhook(conn, payload) do
-    # TODO: switch to `debug`
-    Logger.info("Payload from Slack webhook: #{inspect(payload)}")
+    Logger.debug("Payload from Slack webhook: #{inspect(payload)}")
 
     case payload do
       %{"event" => event} ->
@@ -121,8 +121,7 @@ defmodule ChatApiWeb.SlackController do
            "user" => user_id
          } = event
        ) do
-    # TODO: switch to `debug`
-    Logger.info("Handling Slack event: #{inspect(event)}")
+    Logger.debug("Handling Slack event: #{inspect(event)}")
 
     with {:ok, conversation} <- get_thread_conversation(thread_ts, channel) do
       %{id: conversation_id, account_id: account_id} = conversation
@@ -135,11 +134,10 @@ defmodule ChatApiWeb.SlackController do
         "user_id" => sender_id
       }
 
-      {:ok, message} = Messages.create_message(params)
-      message = Messages.get_message!(message.id)
-      result = ChatApiWeb.MessageView.render("expanded.json", message: message)
-
-      ChatApiWeb.Endpoint.broadcast!("conversation:" <> conversation_id, "shout", result)
+      params
+      |> Messages.create_and_fetch!()
+      |> Messages.broadcast_to_conversation!()
+      |> Messages.notify(:webhooks)
     end
   end
 

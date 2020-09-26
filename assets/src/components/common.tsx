@@ -4,6 +4,7 @@ import Button from 'antd/lib/button';
 import Checkbox from 'antd/lib/checkbox';
 import DatePicker from 'antd/lib/date-picker';
 import Divider from 'antd/lib/divider';
+import Drawer from 'antd/lib/drawer';
 import Dropdown from 'antd/lib/dropdown';
 import Input from 'antd/lib/input';
 import Layout from 'antd/lib/layout';
@@ -49,6 +50,7 @@ export const colors = {
   magenta: magenta[5],
   blue: blue, // expose all blues
   gray: grey, // expose all grays
+  text: 'rgba(0, 0, 0, 0.65)',
 };
 
 export const TextArea = Input.TextArea;
@@ -92,6 +94,7 @@ export {
   Checkbox,
   DatePicker,
   Divider,
+  Drawer,
   Dropdown,
   Input,
   Menu,

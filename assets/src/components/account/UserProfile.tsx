@@ -1,10 +1,20 @@
 import React from 'react';
 import {Box, Flex} from 'theme-ui';
-import {Button, Checkbox, Divider, Input, Paragraph, Title} from '../common';
+import {
+  colors,
+  Button,
+  Checkbox,
+  Divider,
+  Input,
+  Paragraph,
+  Title,
+} from '../common';
 import * as API from '../../api';
+import logger from '../../logger';
 
 type Props = {};
 type State = {
+  email: string;
   fullName: string;
   displayName: string;
   profilePhotoUrl: string;
@@ -17,6 +27,7 @@ class UserProfile extends React.Component<Props, State> {
   input: any = null;
 
   state: State = {
+    email: '',
     fullName: '',
     displayName: '',
     profilePhotoUrl: '',
@@ -36,13 +47,16 @@ class UserProfile extends React.Component<Props, State> {
     const profile = await API.fetchUserProfile();
 
     if (profile) {
+      logger.debug('Profile:', profile);
       const {
+        email,
         display_name: displayName,
         full_name: fullName,
         profile_photo_url: profilePhotoUrl,
       } = profile;
 
       this.setState({
+        email,
         displayName,
         fullName,
         profilePhotoUrl,
@@ -50,6 +64,7 @@ class UserProfile extends React.Component<Props, State> {
     } else {
       // NB: this also handles resetting these values if the optimistic update fails
       this.setState({
+        email: '',
         displayName: '',
         fullName: '',
         profilePhotoUrl: '',
@@ -99,12 +114,12 @@ class UserProfile extends React.Component<Props, State> {
       profile_photo_url: profilePhotoUrl,
     })
       .then((profile) => {
-        console.log('Successfully updated profile!', profile);
+        logger.debug('Successfully updated profile!', profile);
 
         this.setState({isEditing: false});
       })
       .catch((err) => {
-        console.log('Failed to update profile!', err);
+        logger.error('Failed to update profile!', err);
 
         return this.fetchLatestProfile();
       })
@@ -120,7 +135,7 @@ class UserProfile extends React.Component<Props, State> {
     return API.updateUserSettings({
       email_alert_on_new_message: shouldEmailOnNewMessages,
     }).catch((err) => {
-      console.log('Failed to update settings!', err);
+      logger.error('Failed to update settings!', err);
       // Reset if fails to actually update
       return this.fetchLatestSettings();
     });
@@ -133,6 +148,7 @@ class UserProfile extends React.Component<Props, State> {
   render() {
     const {
       isLoading,
+      email,
       fullName,
       displayName,
       profilePhotoUrl,
@@ -163,6 +179,7 @@ class UserProfile extends React.Component<Props, State> {
             type="text"
             value={fullName}
             onChange={this.handleChangeFullName}
+            placeholder="What's your name?"
             disabled={!isEditing}
           />
         </Box>
@@ -174,7 +191,19 @@ class UserProfile extends React.Component<Props, State> {
             type="text"
             value={displayName}
             onChange={this.handleChangeDisplayName}
+            placeholder="How would you like your name to be displayed?"
             disabled={!isEditing}
+          />
+        </Box>
+
+        <Box mb={3} sx={{maxWidth: 480}}>
+          <label htmlFor="email">Email:</label>
+          <Input
+            style={{color: colors.text}}
+            id="email"
+            type="text"
+            value={email}
+            disabled
           />
         </Box>
 
@@ -186,6 +215,7 @@ class UserProfile extends React.Component<Props, State> {
               type="text"
               value={profilePhotoUrl}
               onChange={this.handleChangeProfilePhotoUrl}
+              placeholder="Enter an image URL for your profile photo"
               disabled={!isEditing}
             />
           </Box>

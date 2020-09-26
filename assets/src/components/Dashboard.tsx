@@ -16,6 +16,7 @@ import {
   UserOutlined,
   LogoutOutlined,
   CreditCardOutlined,
+  TeamOutlined,
 } from './icons';
 import {useAuth} from './auth/AuthProvider';
 import AccountOverview from './account/AccountOverview';
@@ -31,6 +32,13 @@ import PriorityConversations from './conversations/PriorityConversations';
 import ClosedConversations from './conversations/ClosedConversations';
 import IntegrationsOverview from './integrations/IntegrationsOverview';
 import BillingOverview from './billing/BillingOverview';
+import CustomersPage from './customers/CustomersPage';
+
+const hasValidStripeKey = () => {
+  const key = process.env.REACT_APP_STRIPE_PUBLIC_KEY;
+
+  return key && key.startsWith('pk_');
+};
 
 const Dashboard = (props: RouteComponentProps) => {
   const auth = useAuth();
@@ -38,6 +46,7 @@ const Dashboard = (props: RouteComponentProps) => {
   const {unreadByCategory: unread} = useConversations();
   const [section, key] = pathname.split('/').slice(1); // Slice off initial slash
   const totalNumUnread = (unread && unread.all) || 0;
+  const shouldDisplayBilling = hasValidStripeKey();
 
   const logout = () => auth.logout().then(() => props.history.push('/login'));
 
@@ -145,19 +154,28 @@ const Dashboard = (props: RouteComponentProps) => {
                 </Menu.Item>
               </Menu.SubMenu>
               <Menu.Item
+                title="Customers"
+                icon={<TeamOutlined />}
+                key="customers"
+              >
+                <Link to="/customers">Customers</Link>
+              </Menu.Item>
+              <Menu.Item
                 title="Integrations"
                 icon={<ApiOutlined />}
                 key="integrations"
               >
                 <Link to="/integrations">Integrations</Link>
               </Menu.Item>
-              <Menu.Item
-                title="Billing"
-                icon={<CreditCardOutlined />}
-                key="billing"
-              >
-                <Link to="/billing">Billing</Link>
-              </Menu.Item>
+              {shouldDisplayBilling && (
+                <Menu.Item
+                  title="Billing"
+                  icon={<CreditCardOutlined />}
+                  key="billing"
+                >
+                  <Link to="/billing">Billing</Link>
+                </Menu.Item>
+              )}
             </Menu>
           </Box>
 
@@ -185,7 +203,7 @@ const Dashboard = (props: RouteComponentProps) => {
             component={GettingStartedOverview}
           />
           <Route path="/account*" component={AccountOverview} />
-          <Route path="/billing" component={BillingOverview} />
+          <Route path="/customers" component={CustomersPage} />
           <Route path="/integrations/:type" component={IntegrationsOverview} />
           <Route path="/integrations" component={IntegrationsOverview} />
           <Route path="/integrations*" component={IntegrationsOverview} />
@@ -196,6 +214,9 @@ const Dashboard = (props: RouteComponentProps) => {
             component={PriorityConversations}
           />
           <Route path="/conversations/closed" component={ClosedConversations} />
+          {shouldDisplayBilling && (
+            <Route path="/billing" component={BillingOverview} />
+          )}
           <Route path="*" render={() => <Redirect to="/conversations/all" />} />
         </Switch>
       </Layout>

@@ -1,6 +1,6 @@
 # Papercups
 
-Papercups is an open source live customer chat web app. We offer a hosted version at [app.papercups.io](https://app.papercups.io/).
+Papercups is an open source live customer chat web app written in Elixir. We offer a hosted version at [app.papercups.io](https://app.papercups.io/).
 
 You can check out how our chat widget looks and play around with customizing it on our [demo page](https://app.papercups.io/demo/). The chat widget component is also open sourced at [github.com/papercups-io/chat-widget](https://github.com/papercups-io/chat-widget).
 
@@ -9,7 +9,7 @@ _Watch how easy it is to get set up with our Slack integration 🚀 :_
 
 ## One click Heroku deployment
 
-The fastest way to get started is one click [deploy on Heroku](https://docs.eventnative.dev/deployment/deploy-on-heroku) with:
+The fastest way to get started is one click deploy on Heroku with:
 
 <a href="https://heroku.com/deploy?template=https://github.com/papercups-io/papercups"><img src="https://www.herokucdn.com/deploy/button.svg" width="200px" /></a>
 
@@ -42,11 +42,11 @@ Try sending us a message to see what the chat experience is like!
 
 ## Contributing
 
-We :heart: contributions big or small. See [CONTRIBUTING.md](https://github.com/papercups-io/papercups/blob/master/CONTRIBUTING.md) for a guide on how to get started.
+We :heart:  contributions big or small. See [CONTRIBUTING.md](https://github.com/papercups-io/papercups/blob/master/CONTRIBUTING.md) for a guide on how to get started.
 
 ## Get in touch
 
-Come say hi to us on [Slack](https://join.slack.com/t/papercups-io/shared_invite/zt-gfs0d269-dEHm3SYs_5KmFKQ9YhBzDw)! :wave:
+Come say hi to us on [Slack](https://join.slack.com/t/papercups-io/shared_invite/zt-h0c3fxmd-hZi1Zp8~D61S6GD16aMqmg)! :wave:
 
 ## License
 

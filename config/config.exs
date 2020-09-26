@@ -31,6 +31,19 @@ config :phoenix, :json_library, Jason
 
 config :tesla, adapter: Tesla.Adapter.Hackney
 
+# Configure Swagger
+config :phoenix_swagger, json_library: Jason
+
+config :chat_api, :phoenix_swagger,
+  swagger_files: %{
+    "priv/static/swagger.json" => [
+      # phoenix routes will be converted to swagger paths
+      router: ChatApiWeb.Router,
+      # (optional) endpoint config used to set host, port and https schemes.
+      endpoint: ChatApiWeb.Endpoint
+    ]
+  }
+
 # Configure Sentry
 sentry_dsn = System.get_env("SENTRY_DSN")
 
@@ -61,10 +74,21 @@ mailgun_api_key = System.get_env("MAILGUN_API_KEY")
 domain = System.get_env("DOMAIN")
 
 if mailgun_api_key != nil and domain != nil do
-  config :chat_api, ChatApi.Mailer,
+  config :chat_api, ChatApi.Mailers.Mailgun,
     adapter: Swoosh.Adapters.Mailgun,
     api_key: mailgun_api_key,
     domain: domain
+end
+
+config :chat_api, ChatApi.Mailers.Gmail, adapter: Swoosh.Adapters.Gmail
+
+site_id = System.get_env("CUSTOMER_IO_SITE_ID")
+customerio_api_key = System.get_env("CUSTOMER_IO_API_KEY")
+
+if site_id != nil and customerio_api_key != nil do
+  config :customerio,
+    site_id: site_id,
+    api_key: customerio_api_key
 end
 
 case System.get_env("PAPERCUPS_STRIPE_SECRET") do

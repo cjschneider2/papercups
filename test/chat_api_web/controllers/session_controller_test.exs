@@ -1,32 +1,25 @@
 defmodule ChatApiWeb.SessionControllerTest do
-  use ChatApiWeb.ConnCase
+  use ChatApiWeb.ConnCase, async: true
 
-  alias ChatApi.{Repo, Accounts, Users.User}
+  alias ChatApi.Users
+  alias ChatApi.Users.User
 
-  @password "secret1234"
+  @invalid_params %{"user" => %{"email" => "test@example.com", "password" => "invalid"}}
 
   setup do
-    {:ok, account} = Accounts.create_account(%{company_name: "Test Inc"})
-
-    user =
-      %User{}
-      |> User.changeset(%{
-        email: "test@example.com",
-        password: @password,
-        password_confirmation: @password,
-        account_id: account.id
-      })
-      |> Repo.insert!()
+    account = account_fixture()
+    user = user_fixture(account)
 
     {:ok, user: user}
   end
 
-  describe "create/2" do
-    @valid_params %{"user" => %{"email" => "test@example.com", "password" => @password}}
-    @invalid_params %{"user" => %{"email" => "test@example.com", "password" => "invalid"}}
+  def auth_params(%User{} = user) do
+    %{"user" => %{"email" => user.email, "password" => user.password}}
+  end
 
-    test "with valid params", %{conn: conn} do
-      conn = post(conn, Routes.session_path(conn, :create, @valid_params))
+  describe "create/2" do
+    test "with valid params", %{conn: conn, user: user} do
+      conn = post(conn, Routes.session_path(conn, :create, auth_params(user)))
 
       assert json = json_response(conn, 200)
       assert json["data"]["token"]
@@ -40,11 +33,20 @@ defmodule ChatApiWeb.SessionControllerTest do
       assert json["error"]["message"] == "Invalid email or password"
       assert json["error"]["status"] == 401
     end
+
+    test "with disabled user", %{conn: conn, user: user} do
+      {:ok, _user} = Users.disable_user(user)
+      resp = post(conn, Routes.session_path(conn, :create, auth_params(user)))
+
+      assert json = json_response(resp, 401)
+      assert "Your account is disabled" <> _msg = json["error"]["message"]
+      assert json["error"]["status"] == 401
+    end
   end
 
   describe "renew/2" do
-    setup %{conn: conn} do
-      authed_conn = post(conn, Routes.session_path(conn, :create, @valid_params))
+    setup %{conn: conn, user: user} do
+      authed_conn = post(conn, Routes.session_path(conn, :create, auth_params(user)))
       :timer.sleep(100)
 
       {:ok, renewal_token: authed_conn.private[:api_renew_token]}
@@ -71,11 +73,24 @@ defmodule ChatApiWeb.SessionControllerTest do
       assert json["error"]["message"] == "Invalid token"
       assert json["error"]["status"] == 401
     end
+
+    test "with disabled user", %{conn: conn, user: user, renewal_token: token} do
+      {:ok, _user} = Users.disable_user(user)
+
+      conn =
+        conn
+        |> Plug.Conn.put_req_header("authorization", token)
+        |> post(Routes.session_path(conn, :renew))
+
+      assert json = json_response(conn, 401)
+      assert "Your account is disabled" <> _msg = json["error"]["message"]
+      assert json["error"]["status"] == 401
+    end
   end
 
   describe "delete/2" do
-    setup %{conn: conn} do
-      authed_conn = post(conn, Routes.session_path(conn, :create, @valid_params))
+    setup %{conn: conn, user: user} do
+      authed_conn = post(conn, Routes.session_path(conn, :create, auth_params(user)))
       :timer.sleep(100)
       {:ok, access_token: authed_conn.private[:api_auth_token]}
     end

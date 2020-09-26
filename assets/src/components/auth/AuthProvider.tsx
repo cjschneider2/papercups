@@ -1,6 +1,7 @@
 import React, {useContext} from 'react';
 import {getAuthTokens, setAuthTokens, removeAuthTokens} from '../../storage';
 import * as API from '../../api';
+import logger from '../../logger';
 
 export const AuthContext = React.createContext<{
   isAuthenticated: boolean;
@@ -91,37 +92,37 @@ export class AuthProvider extends React.Component<Props, State> {
     return API.renew(refreshToken)
       .then((tokens) => this.handleAuthSuccess(tokens))
       .catch((err) => {
-        console.log('Invalid session:', err);
+        logger.error('Invalid session:', err);
       });
   };
 
   register = async (params: API.RegisterParams): Promise<void> => {
-    console.log('Signing up!');
+    logger.debug('Signing up!');
     // Set user, authenticated status, etc
     return API.register(params)
       .then((tokens) => this.handleAuthSuccess(tokens))
       .then(() => {
-        console.log('Successfully signed up!');
+        logger.debug('Successfully signed up!');
       });
   };
 
   login = async (params: API.LoginParams): Promise<void> => {
-    console.log('Logging in!');
+    logger.debug('Logging in!');
     // Set user, authenticated status, etc
     return API.login(params)
       .then((tokens) => this.handleAuthSuccess(tokens))
       .then(() => {
-        console.log('Successfully logged in!');
+        logger.debug('Successfully logged in!');
       });
   };
 
   logout = async (): Promise<void> => {
-    console.log('Logging out!');
+    logger.debug('Logging out!');
     // Set user, authenticated status, etc
     return API.logout()
       .then(() => this.handleClearAuth())
       .then(() => {
-        console.log('Successfully logged out!');
+        logger.debug('Successfully logged out!');
       });
   };
 

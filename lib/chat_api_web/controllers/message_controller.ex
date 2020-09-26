@@ -1,11 +1,53 @@
 defmodule ChatApiWeb.MessageController do
   use ChatApiWeb, :controller
+  use PhoenixSwagger
 
-  alias ChatApi.{EventSubscriptions, Messages}
+  alias ChatApi.Messages
   alias ChatApi.Messages.Message
 
   action_fallback(ChatApiWeb.FallbackController)
 
+  def swagger_definitions do
+    %{
+      Message:
+        swagger_schema do
+          title("Message")
+          description("A message in the app")
+
+          properties do
+            id(:string, "Message ID")
+            body(:string, "Message body", required: true)
+            account_id(:string, "The ID of the associated account", required: true)
+            conversation_id(:string, "The ID of the associated conversation", required: true)
+            customer_id(:string, "The ID of the customer")
+            user_id(:string, "The ID of the user/agent")
+            created_at(:string, "Created timestamp", format: :datetime)
+            updated_at(:string, "Updated timestamp", format: :datetime)
+          end
+
+          example(%{
+            body: "Hello world!",
+            customer_id: "cus_1a2b3c",
+            conversation_id: "conv_1a2b3c",
+            account_id: "acct_1a2b3c",
+            user_id: "user_1a2b3c"
+          })
+        end
+    }
+  end
+
+  swagger_path :index do
+    get("/api/messages")
+    summary("Query for messages")
+    description("Query for messages.")
+
+    parameter("Authorization", :header, :string, "OAuth2 access token", required: true)
+
+    response(200, "Success")
+    response(401, "Not authenticated")
+  end
+
+  @spec index(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def index(conn, _params) do
     with %{account_id: account_id} <- conn.assigns.current_user do
       messages = Messages.list_messages(account_id)
@@ -13,6 +55,7 @@ defmodule ChatApiWeb.MessageController do
     end
   end
 
+  @spec count(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def count(conn, _params) do
     with %{account_id: account_id} <- conn.assigns.current_user do
       count = Messages.count_messages_by_account(account_id)
@@ -21,6 +64,20 @@ defmodule ChatApiWeb.MessageController do
     end
   end
 
+  swagger_path :create do
+    post("/api/messages")
+    summary("Create a message")
+    description("Create a new message")
+
+    parameter("Authorization", :header, :string, "OAuth2 access token", required: true)
+    parameter(:message, :body, :object, "The message details")
+
+    response(201, "Success")
+    response(422, "Unprocessable entity")
+    response(401, "Not authenticated")
+  end
+
+  @spec create(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def create(conn, %{"message" => message_params}) do
     with %{id: user_id, account_id: account_id} <- conn.assigns.current_user,
          {:ok, %Message{} = msg} <-
@@ -38,11 +95,25 @@ defmodule ChatApiWeb.MessageController do
     end
   end
 
+  swagger_path :show do
+    get("/api/messages/{id}")
+    summary("Retrieve a message")
+    description("Retrieve an existing message")
+
+    parameter("Authorization", :header, :string, "OAuth2 access token", required: true)
+    parameter(:id, :path, :string, "Message ID", required: true)
+
+    response(200, "Success")
+    response(401, "Not authenticated")
+  end
+
+  @spec show(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def show(conn, %{"id" => id}) do
     message = Messages.get_message!(id)
     render(conn, "show.json", message: message)
   end
 
+  @spec update(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def update(conn, %{"id" => id, "message" => message_params}) do
     message = Messages.get_message!(id)
 
@@ -51,6 +122,7 @@ defmodule ChatApiWeb.MessageController do
     end
   end
 
+  @spec delete(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def delete(conn, %{"id" => id}) do
     message = Messages.get_message!(id)
 
@@ -60,35 +132,9 @@ defmodule ChatApiWeb.MessageController do
   end
 
   defp broadcast_new_message(message) do
-    json = ChatApiWeb.MessageView.render("expanded.json", message: message)
-    %{conversation_id: conversation_id, account_id: account_id} = message
-    topic = "conversation:" <> conversation_id
-
-    ChatApiWeb.Endpoint.broadcast!(topic, "shout", json)
-
-    # Handling async for now
-    Task.start(fn ->
-      send_message_alerts(message)
-    end)
-
-    Task.start(fn ->
-      send_webhook_notifications(account_id, json)
-    end)
-  end
-
-  defp send_message_alerts(message) do
-    %{conversation_id: conversation_id, customer_id: customer_id, body: body} = message
-    type = if is_nil(customer_id), do: :agent, else: :customer
-
-    # TODO: how should we handle errors here?
-    ChatApi.Slack.send_conversation_message_alert(conversation_id, body, type: type)
-  end
-
-  # TODO: DRY up with conversation channel
-  defp send_webhook_notifications(account_id, payload) do
-    EventSubscriptions.notify_event_subscriptions(account_id, %{
-      "event" => "message:created",
-      "payload" => payload
-    })
+    message
+    |> Messages.broadcast_to_conversation!()
+    |> Messages.notify(:slack)
+    |> Messages.notify(:webhooks)
   end
 end

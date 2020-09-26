@@ -1,25 +1,10 @@
 defmodule ChatApiWeb.NotificationChannelTest do
   use ChatApiWeb.ChannelCase
 
-  alias ChatApi.{Repo, Accounts, Conversations, Users.User}
-
-  @password "secret1234"
-
   setup do
-    {:ok, account} = Accounts.create_account(%{company_name: "Taro"})
-
-    user =
-      %User{}
-      |> User.changeset(%{
-        email: "test@example.com",
-        password: @password,
-        password_confirmation: @password,
-        account_id: account.id
-      })
-      |> Repo.insert!()
-
-    {:ok, conversation} =
-      Conversations.create_conversation(%{account_id: account.id, status: "open"})
+    account = account_fixture()
+    user = user_fixture(account)
+    conversation = conversation_fixture(account, customer_fixture(account))
 
     {:ok, _, socket} =
       ChatApiWeb.UserSocket
@@ -41,7 +26,12 @@ defmodule ChatApiWeb.NotificationChannelTest do
     account: account,
     conversation: conversation
   } do
-    msg = %{body: "Hello world!", account_id: account.id, conversation_id: conversation.id}
+    msg = %{
+      body: "Hello world!",
+      account_id: account.id,
+      conversation_id: conversation.id
+    }
+
     push(socket, "shout", msg)
 
     assert_push("shout", msg)

@@ -15,6 +15,7 @@ import {
 import {RightCircleOutlined} from '../icons';
 import {BASE_URL} from '../../config';
 import * as API from '../../api';
+import logger from '../../logger';
 // Testing widget in separate package
 import ChatWidget from '@papercups-io/chat-widget';
 
@@ -78,6 +79,10 @@ class Demo extends React.Component<Props, State> {
     return {
       email: email,
       external_id: String(id),
+      metadata: {
+        // Just testing that ad hoc metadata works :)
+        ts: +new Date(),
+      },
     };
   };
 
@@ -164,6 +169,15 @@ class Demo extends React.Component<Props, State> {
           customer={customer}
           baseUrl={BASE_URL}
           defaultIsOpen
+          showAgentAvailability
+          onChatClosed={() => logger.debug('Chat closed!')}
+          onChatOpened={() => logger.debug('Chat opened!')}
+          onMessageReceived={(message: any) =>
+            logger.debug('Message received!', message)
+          }
+          onMessageSent={(message: any) =>
+            logger.debug('Message sent!', message)
+          }
         />
       </Box>
     );

@@ -21,7 +21,6 @@ defmodule ChatApi.Accounts do
     Repo.all(Account)
   end
 
-  @spec get_account!(any) :: nil | [%{optional(atom) => any}] | %{optional(atom) => any}
   @doc """
   Gets a single account.
 
@@ -37,7 +36,7 @@ defmodule ChatApi.Accounts do
 
   """
   def get_account!(id) do
-    Account |> Repo.get!(id) |> Repo.preload([:users, :widget_settings])
+    Account |> Repo.get!(id) |> Repo.preload([[users: :profile], :widget_settings])
   end
 
   @doc """
@@ -53,8 +52,7 @@ defmodule ChatApi.Accounts do
 
   """
   def create_account(attrs \\ %{}) do
-    %Account{}
-    |> Account.changeset(attrs)
+    Account.changeset(%Account{}, attrs)
     |> Repo.insert()
   end
 

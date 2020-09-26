@@ -1,4 +1,6 @@
 defmodule ChatApi.Workers.SendWelcomeEmail do
+  @moduledoc false
+
   use Oban.Worker, queue: :mailers
 
   require Logger
@@ -20,7 +22,7 @@ defmodule ChatApi.Workers.SendWelcomeEmail do
   end
 
   def is_hosted_version?() do
-    System.get_env("DOMAIN") == "mail.papercups.io"
+    System.get_env("DOMAIN") == "mail.heypapercups.io"
   end
 
   def welcome_email_enabled?() do
